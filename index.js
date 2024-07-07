@@ -1,29 +1,22 @@
 const express = require("express");
 const app = express();
 require("dotenv").config();
-// var jwt = require("jsonwebtoken");
+var jwt = require("jsonwebtoken");
 const cors = require("cors");
 const port = process.env.PORT || 4321;
 
 // middleware
 app.use(
-  cors()
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://task-master-96.web.app",
+      "https://task-master-96.firebaseapp.com",
+    ],
+    credentials: true,
+  })
 );
 app.use(express.json());
-
-// {
-//     origin: ["http://localhost:5173", "https://task-master-client96.web.app"],
-//     credentials: true,
-//   }
-
-// app.use((req, res, next) => {
-//   res.setHeader('Access-Control-Allow-Origin', 'https://task-master-client96.web.app');
-//   // Additional headers you may need
-//   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-//   res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
-//   res.setHeader('Access-Control-Allow-Credentials', true);
-//   next();
-// });
 
 const verifyToken = (req, res, next) => {
   // console.log("inside middleware", req.headers.authorization);
@@ -65,14 +58,26 @@ async function run() {
       .db("task-master")
       .collection("completed");
 
-    // // jwt api
-    // app.post("/jwt", (req, res) => {
-    //   const user = req.body;
-    //   const token = jwt.sign(user, process.env.SECRET_TOKEN, {
-    //     expiresIn: "1h",
-    //   });
-    //   res.send({ token });
-    // });
+    // admin api
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === "admin";
+      if (!isAdmin) {
+        return res.status(403).send({ message: "Access forbidden" });
+      }
+      next();
+    };
+
+    // jwt api
+    app.post("/jwt", (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.SECRET_TOKEN, {
+        expiresIn: "1h",
+      });
+      res.send({ token });
+    });
 
     // user api
     app.post("/user", async (req, res) => {
@@ -85,8 +90,42 @@ async function run() {
       const result = await userCollection.insertOne(user);
       res.send(result);
     });
+
     app.get("/user", async (req, res) => {
       const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/user/admin/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "Access Unauthorized" });
+      }
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role === "admin";
+      }
+      res.send({ admin });
+    });
+
+    app.patch("/user/admin/:id", verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await userCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.delete("/user/:id", verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await userCollection.deleteOne(query);
       res.send(result);
     });
 
@@ -101,12 +140,6 @@ async function run() {
       const result = await taskCollection.insertOne(task);
       res.send(result);
     });
-    app.delete("/task/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await taskCollection.deleteOne(query);
-      res.send(result);
-    });
 
     //   bookings api
     app.post("/bookings", async (req, res) => {
@@ -114,16 +147,9 @@ async function run() {
       const result = await bookingCollection.insertOne(bookingItem);
       res.send(result);
     });
+
     app.get("/bookings", async (req, res) => {
-      const email = req.query.email;
-      const query = { email: email };
-      const result = await bookingCollection.find(query).toArray();
-      res.send(result);
-    });
-    app.delete("/bookings/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await bookingCollection.deleteOne(query);
+      const result = await bookingCollection.find().toArray();
       res.send(result);
     });
 
@@ -133,12 +159,12 @@ async function run() {
       const result = await runningCollection.insertOne(runningItem);
       res.send(result);
     });
+
     app.get("/running", async (req, res) => {
-      const email = req.query.email;
-      const query = { email: email };
-      const result = await runningCollection.find(query).toArray();
+      const result = await runningCollection.find().toArray();
       res.send(result);
     });
+
     app.delete("/running/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -152,12 +178,12 @@ async function run() {
       const result = await completedCollection.insertOne(completedItem);
       res.send(result);
     });
+
     app.get("/completed", async (req, res) => {
-      const email = req.query.email;
-      const query = { email: email };
-      const result = await completedCollection.find(query).toArray();
+      const result = await completedCollection.find().toArray();
       res.send(result);
     });
+
     app.delete("/completed/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };

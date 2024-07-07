@@ -27,3 +27,13 @@ Features:
   <li>An admin can assign an user a task. Also can delete a task</li>
   <li>Admin can also add task in the Add Task page.</li>
 </ol>
+
+To run this backend locally, First this repository should be cloned. After that necessary dependencies must be installed and a .env file should be created. <br />
+
+.env file information: <br />
+DB_USER=taskHub
+DB_PASS=zUnn7VzXiOIzQg37
+SECRET_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRhc2tAbWFzdGVyLmNvbSIsImlhdCI6MTcxMTk0MjM3NiwiZXhwIjoxNzExOTQ1OTc2fQ.7etN8IJLEol0tcm9r0mPVxD8eLqLVP4YVBVk6RKKLwo
+
+After filling .env file with above information, we have to run "npm start" in the command prompt and the backend will run fine.
+
